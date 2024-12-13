@@ -1,4 +1,4 @@
-# [All the Mods 10-2.2](https://www.curseforge.com/minecraft/modpacks/all-the-mods-10) on Curseforge
+# [All the Mods 10-2.3](https://www.curseforge.com/minecraft/modpacks/all-the-mods-10) on Curseforge
 <!-- toc -->
 
 - [Description](#description)
@@ -17,7 +17,7 @@
 
 This container is built to run on an [Unraid](https://unraid.net) server, outside of that your milliage will vary.
 
-The docker on first run will download the same version as tagged of `All the Mods 10-2.2` and install it.  This can take a while as the Forge installer can take a bit to complete.  You can watch the logs and it will eventually finish.
+The docker on first run will download the same version as tagged of `All the Mods 10-2.3` and install it.  This can take a while as the Forge installer can take a bit to complete.  You can watch the logs and it will eventually finish.
 
 After the first run it will simply start the server.
 
@@ -36,7 +36,7 @@ As the end user, you are repsonsible for accepting the EULA from Mojang to run t
 These environment variables can be set to override their defaults.
 
 * JVM_OPTS "-Xms2048m -Xmx4096m"
-* MOTD "All the Mods 10-2.2 Server Powered by Docker"
+* MOTD "All the Mods 10-2.3 Server Powered by Docker"
 * ENABLE_WHITELIST "true" or "false"
 * WHITELIST_USERS "TestUserName1, TestUserName2"
 * OP_USERS "TestUserName1, TestUserName2"
