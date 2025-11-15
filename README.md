@@ -1,5 +1,5 @@
 
-# [All the Mods 10-4.14](https://www.curseforge.com/minecraft/modpacks/all-the-mods-10) on Curseforge
+# [All the Mods 10-5.0](https://www.curseforge.com/minecraft/modpacks/all-the-mods-10) on Curseforge
 <!-- toc -->
 
 - [Description](#description)
@@ -19,7 +19,7 @@
 This container is built to run on an [Unraid](https://unraid.net) server, outside of that your mileage will vary.
 
 
-The docker on the first run will download the same version as tagged `All the Mods 10-4.11` and install it.  This can take a while as the Forge installer can take a bit to complete.  You can watch the logs and it will eventually finish.
+The docker on the first run will download the same version as tagged `All the Mods 10-5.0` and install it.  This can take a while as the Forge installer can take a bit to complete.  You can watch the logs and it will eventually finish.
 
 After the first run, it will simply start the server.
 
@@ -57,12 +57,12 @@ This container is designed for [Unraid](https://unraid.net) so the user in the c
 ### Resetting
 If the installation is incomplete for some reason.  Deleting the downloaded server file in /data will restart the install/upgrade process.
 
-## Source (Original ATM9 repo)
-Github: https://github.com/Goobaroo/docker-allthemods9
+## Source (Original ATM10 repo)
+Github: [https://github.com/Goobaroo/docker-allthemods9](https://github.com/W3LFARe/docker-allthemods10)
 
-Docker: https://hub.docker.com/repository/docker/goobaroo/allthemods9
+Docker: [https://hub.docker.com/repository/docker/goobaroo/allthemods9](https://registry.hub.docker.com/r/w3lfare/allthemods10)
 
 ## Source (W3LFARe repo)
-Github: https://github.com/W3LFARe/docker-allthemods10
+Github: 
 
-Docker: https://registry.hub.docker.com/r/w3lfare/allthemods10 
+Docker:  
