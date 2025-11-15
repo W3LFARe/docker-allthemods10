@@ -57,12 +57,12 @@ This container is designed for [Unraid](https://unraid.net) so the user in the c
 ### Resetting
 If the installation is incomplete for some reason.  Deleting the downloaded server file in /data will restart the install/upgrade process.
 
-## Source (Original ATM10 repo)
-Github: [https://github.com/Goobaroo/docker-allthemods9](https://github.com/W3LFARe/docker-allthemods10)
+## Source (Original ATM9 repo)
+Github: https://github.com/Goobaroo/docker-allthemods9
 
-Docker: [https://hub.docker.com/repository/docker/goobaroo/allthemods9](https://registry.hub.docker.com/r/w3lfare/allthemods10)
+Docker: https://hub.docker.com/repository/docker/goobaroo/allthemods9
 
 ## Source (W3LFARe repo)
-Github: 
+Github: https://github.com/W3LFARe/docker-allthemods10
 
-Docker:  
+Docker: https://registry.hub.docker.com/r/w3lfare/allthemods10 
