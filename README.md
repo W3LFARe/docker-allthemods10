@@ -37,8 +37,8 @@ As the end user, you are responsible for accepting the EULA from Mojang to run t
 
 These environment variables can be set to override their defaults.
 
-* JVM_OPTS "-Xms2048m -Xmx4096m"
-* MOTD "All the Mods 10-4.10 Server Powered by Docker"
+* JVM_OPTS "-Xms2500m -Xmx8192m"
+* MOTD "All the Mods 10-5.0 Server Powered by Docker"
 * ALLOW_FLIGHT "true" or "false"
 * MAX_PLAYERS "5"
 * ONLINE_MODE "true" or "false"
