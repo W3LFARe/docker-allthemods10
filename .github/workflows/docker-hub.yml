@@ -1,4 +1,5 @@
 name: Docker Hub Image Deploy
+
 on:
   push:
     branches: ["main", "develop"]
@@ -6,9 +7,11 @@ on:
 jobs:
   docker-image:
     runs-on: ubuntu-latest
-
+    
+    permissions:
+      contents: read
+      
     steps:
-
       - name: Check out the repository
         uses: actions/checkout@v6.0.1
 
