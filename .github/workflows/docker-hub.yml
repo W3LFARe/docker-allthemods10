@@ -3,6 +3,7 @@ name: Docker Hub Image Deploy
 on:
   push:
     branches: ["main", "develop"]
+  workflow_dispatch: 
 
 jobs:
   docker-image:
