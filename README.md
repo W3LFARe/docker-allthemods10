@@ -1,5 +1,5 @@
 
-# [All the Mods 10-5.5](https://www.curseforge.com/minecraft/modpacks/all-the-mods-10) on Curseforge
+# [All the Mods 10-6.0.1](https://www.curseforge.com/minecraft/modpacks/all-the-mods-10) on Curseforge
 <!-- toc -->
 
 - [Description](#description)
