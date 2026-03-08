@@ -19,7 +19,7 @@
 This container is built to run on an [Unraid](https://unraid.net) server, outside of that your mileage will vary.
 
 
-The docker on the first run will download the same version as tagged `All the Mods 10-5.5` and install it.  This can take a while as the Forge installer can take a bit to complete.  You can watch the logs and it will eventually finish.
+The docker on the first run will download the same version as tagged `All the Mods 10-6.1` and install it.  This can take a while as the Forge installer can take a bit to complete.  You can watch the logs and it will eventually finish.
 
 After the first run, it will simply start the server.
 
