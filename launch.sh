@@ -29,8 +29,8 @@ if ! [[ -f "Server-Files-$SERVER_VERSION.zip" ]]; then
         rm -fr "$DIR_TEST"
     fi
     
-    curl -Lo neoforge-$NEOFORGE_VERSION-installer.jar https://maven.neoforged.net/releases/net/neoforged/neoforge/$NEOFORGE_VERSION/neoforge-$NEOFORGE_VERSION-installer.jar
-    java -jar neoforge-$NEOFORGE_VERSION-installer.jar --installServer
+    curl -Lo neoforge-${NEOFORGE_VERSION}-installer.jar https://maven.neoforged.net/releases/net/neoforged/neoforge/$NEOFORGE_VERSION/neoforge-$NEOFORGE_VERSION-installer.jar
+    java -jar neoforge-${NEOFORGE_VERSION}-installer.jar --installServer
 fi
 
 if [[ -n "$JVM_OPTS" ]]; then
