@@ -2,8 +2,8 @@
 set -x
 
 
-NEOFORGE_VERSION=21.1.247
-SERVER_VERSION=8.0
+NEOFORGE_VERSION=21.1.249
+SERVER_VERSION=8.1
 
 cd /data
 
@@ -17,7 +17,7 @@ fi
 if ! [[ -f "Server-Files-$SERVER_VERSION.zip" ]]; then
     rm -fr config defaultconfigs kubejs mods packmenu Server-Files-* neoforge*
 
-    curl -Lo "Server-Files-$SERVER_VERSION.zip" "https://edge.forgecdn.net/files/8649/107/ServerFiles-$SERVER_VERSION.zip" || exit 9
+    curl -Lo "Server-Files-$SERVER_VERSION.zip" "https://edge.forgecdn.net/files/8764/245/ServerFiles-$SERVER_VERSION.zip" || exit 9
 
     unzip -u -o "Server-Files-$SERVER_VERSION.zip" -d /data
     DIR_TEST="ServerFiles-$SERVER_VERSION"
@@ -28,7 +28,7 @@ if ! [[ -f "Server-Files-$SERVER_VERSION.zip" ]]; then
         cd /data
         rm -fr "$DIR_TEST"
     fi
-    
+
     curl -Lo neoforge-${NEOFORGE_VERSION}-installer.jar https://maven.neoforged.net/releases/net/neoforged/neoforge/$NEOFORGE_VERSION/neoforge-$NEOFORGE_VERSION-installer.jar
     java -jar neoforge-${NEOFORGE_VERSION}-installer.jar --installServer
 fi
