@@ -2,7 +2,7 @@
 
 FROM eclipse-temurin:21-jdk
 
-LABEL version="8.0"
+LABEL version="8.1"
 
 
 RUN apt-get update && apt-get install -y curl unzip jq && \
