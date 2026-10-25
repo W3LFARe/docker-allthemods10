@@ -478,11 +478,12 @@ def cmd_dockerhub(_args) -> int:
     repo = f"{user.lower()}/{env['IMAGE_NAME']}"
     short = f"A Modded Java Minecraft server container for Unraid that runs {env['PACK_NAME']}-{env['SERVER_VERSION']}"[:100]
     full = README.read_text() if README.exists() else short
+    payload = json.dumps({"description": short, "full_description": full}).encode("utf-8")
 
-    auth_header = None
-    for url, body, key, scheme in [
-        ("https://hub.docker.com/v2/auth/token", {"identifier": user, "secret": secret}, "access_token", "Bearer"),
-        ("https://hub.docker.com/v2/users/login/", {"username": user, "password": secret}, "token", "JWT"),
+    auth_headers: list[tuple[str, str]] = []
+    for label, url, body, key, schemes in [
+        ("users/login", "https://hub.docker.com/v2/users/login", {"username": user, "password": secret}, "token", ["JWT", "Bearer"]),
+        ("auth/token", "https://hub.docker.com/v2/auth/token", {"identifier": user, "secret": secret}, "access_token", ["Bearer"]),
     ]:
         try:
             with http(
@@ -493,33 +494,34 @@ def cmd_dockerhub(_args) -> int:
             ) as r:
                 tok = json.load(r).get(key)
                 if tok:
-                    auth_header = f"{scheme} {tok}"
-                    break
-        except urllib.error.HTTPError:
-            continue
-    if not auth_header:
-        raise UpdateError("Docker Hub login failed (ensure DOCKERHUB_TOKEN has Read & Write scope)")
+                    for s in schemes:
+                        auth_headers.append((f"{label}:{s}", f"{s} {tok}"))
+        except urllib.error.HTTPError as e:
+            print(f"Docker Hub {label} -> HTTP {e.code}")
 
-    payload = json.dumps({"description": short, "full_description": full}).encode("utf-8")
-    try:
-        with http(
-            f"https://hub.docker.com/v2/repositories/{repo}/",
-            method="PATCH",
-            headers={"Authorization": auth_header, "Content-Type": "application/json", "Accept": "application/json"},
-            data=payload,
-        ) as r:
-            print(f"Updated Docker Hub {repo} (HTTP {r.status}): {short}")
-    except urllib.error.HTTPError as e:
-        detail = e.read().decode("utf-8", "replace")[:300]
-        if e.code == 403 and "insufficient scope" in detail:
-            print(
-                f"::warning title=Docker Hub description not updated::"
-                f"DOCKERHUB_TOKEN only has Read & Write scope. To let CI update the Docker Hub "
-                f"short description and README overview for {repo}, create a Docker Hub Access Token "
-                f"with 'Read, Write, Delete' permissions and save it to the DOCKERHUB_TOKEN secret."
-            )
-            return 0
-        raise UpdateError(f"Docker Hub PATCH /v2/repositories/{repo}/ -> HTTP {e.code}: {detail}") from e
+    if not auth_headers:
+        raise UpdateError("Docker Hub login failed")
+
+    last_detail = ""
+    for label, auth_header in auth_headers:
+        for suffix in ("", "/"):
+            target = f"https://hub.docker.com/v2/repositories/{repo}{suffix}"
+            try:
+                with http(
+                    target,
+                    method="PATCH",
+                    headers={"Authorization": auth_header, "Content-Type": "application/json", "Accept": "application/json"},
+                    data=payload,
+                ) as r:
+                    print(f"Updated Docker Hub {repo} via {label}{suffix} (HTTP {r.status}): {short}")
+                    return 0
+            except urllib.error.HTTPError as e:
+                last_detail = f"{label}{suffix} -> HTTP {e.code}: {e.read().decode('utf-8', 'replace')[:200]}"
+                print(last_detail)
+
+    print(
+        f"::warning title=Docker Hub description not updated::{last_detail}"
+    )
     return 0
 
 
