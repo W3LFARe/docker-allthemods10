@@ -94,3 +94,11 @@ jobs:
             docker push "$t"
             echo "- pushed \`$t\`" >> "$GITHUB_STEP_SUMMARY"
           done
+
+      - name: Update Docker Hub description & README
+        if: github.ref_name == 'main'
+        continue-on-error: true
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: python3 .github/scripts/cf_update.py dockerhub

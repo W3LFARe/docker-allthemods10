@@ -77,6 +77,14 @@ jobs:
           if [[ "$IGNORE_SKIP" == "true" ]]; then args+=(--ignore-skip); fi
           python3 .github/scripts/cf_update.py check "${args[@]}"
 
+      - name: Sync Docker Hub description & README
+        if: github.ref_name == env.RELEASE_BRANCH && steps.cf.outputs.changed != 'true' && inputs.dry_run != true
+        continue-on-error: true
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: python3 .github/scripts/cf_update.py dockerhub
+
       - name: Commit update to staging branch
         id: stage
         if: steps.cf.outputs.changed == 'true' && inputs.dry_run != true
@@ -190,6 +198,14 @@ jobs:
           gh release create "$tag" --title "$title" --notes-file notes.md --verify-tag "${pre[@]}"
           git push origin --delete "$STAGING" || true
           echo "### ✅ Released \`$tag\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Update Docker Hub description & README
+        if: github.ref_name == env.RELEASE_BRANCH
+        continue-on-error: true
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: python3 .github/scripts/cf_update.py dockerhub
 
   on-failure:
     needs: [check, release]

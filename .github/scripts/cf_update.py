@@ -469,6 +469,52 @@ def cmd_neoforge(args) -> int:
     return 0
 
 
+def cmd_dockerhub(_args) -> int:
+    user = os.environ.get("DOCKERHUB_USERNAME", "").strip()
+    secret = os.environ.get("DOCKERHUB_TOKEN", "").strip()
+    if not user or not secret:
+        raise UpdateError("DOCKERHUB_USERNAME and DOCKERHUB_TOKEN must be set")
+    env = read_env()
+    repo = f"{user.lower()}/{env['IMAGE_NAME']}"
+    short = f"A Modded Java Minecraft server container for Unraid that runs {env['PACK_NAME']}-{env['SERVER_VERSION']}"[:100]
+    full = README.read_text() if README.exists() else short
+
+    auth_header = None
+    for url, body, key, scheme in [
+        ("https://hub.docker.com/v2/auth/token", {"identifier": user, "secret": secret}, "access_token", "Bearer"),
+        ("https://hub.docker.com/v2/users/login/", {"username": user, "password": secret}, "token", "JWT"),
+    ]:
+        try:
+            with http(
+                url,
+                method="POST",
+                headers={"Content-Type": "application/json", "Accept": "application/json"},
+                data=json.dumps(body).encode("utf-8"),
+            ) as r:
+                tok = json.load(r).get(key)
+                if tok:
+                    auth_header = f"{scheme} {tok}"
+                    break
+        except urllib.error.HTTPError:
+            continue
+    if not auth_header:
+        raise UpdateError("Docker Hub login failed (ensure DOCKERHUB_TOKEN has Read & Write scope)")
+
+    payload = json.dumps({"description": short, "full_description": full}).encode("utf-8")
+    try:
+        with http(
+            f"https://hub.docker.com/v2/repositories/{repo}/",
+            method="PATCH",
+            headers={"Authorization": auth_header, "Content-Type": "application/json", "Accept": "application/json"},
+            data=payload,
+        ) as r:
+            print(f"Updated Docker Hub {repo} (HTTP {r.status}): {short}")
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode("utf-8", "replace")[:300]
+        raise UpdateError(f"Docker Hub PATCH /v2/repositories/{repo}/ -> HTTP {e.code}: {detail}") from e
+    return 0
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -480,6 +526,7 @@ def main(argv=None) -> int:
     r = sub.add_parser("restore"); r.add_argument("old_env"); r.set_defaults(fn=cmd_restore)
     n = sub.add_parser("notes"); n.add_argument("version"); n.set_defaults(fn=cmd_notes)
     f = sub.add_parser("neoforge"); f.add_argument("url"); f.set_defaults(fn=cmd_neoforge)
+    d = sub.add_parser("dockerhub"); d.set_defaults(fn=cmd_dockerhub)
     args = ap.parse_args(argv)
     try:
         return args.fn(args)

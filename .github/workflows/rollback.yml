@@ -73,3 +73,10 @@ jobs:
           if [[ "$SKIP_CURRENT" == "true" ]]; then
             echo "Added file \`${bad_file_id}\` (\`${bad_version}\`) to \`SKIP_FILE_IDS\`." >> "$GITHUB_STEP_SUMMARY"
           fi
+
+      - name: Update Docker Hub description & README
+        continue-on-error: true
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: python3 .github/scripts/cf_update.py dockerhub
