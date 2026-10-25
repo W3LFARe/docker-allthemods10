@@ -77,7 +77,8 @@ if [[ ! -f "$MARKER" ]]; then
 fi
 
 if [[ -n "$JVM_OPTS" ]]; then
-    sed -i '/^-Xm[sx]/d' user_jvm_args.txt
+    sed -i '/^-Xm[sx]/d; /^# --- launch\.sh JVM_OPTS ---$/,$d' user_jvm_args.txt
+    printf '\n# --- launch.sh JVM_OPTS ---\n' >> user_jvm_args.txt
     for j in ${JVM_OPTS}; do
         printf '%s\n' "$j" >> user_jvm_args.txt
     done
@@ -152,7 +153,9 @@ for raw_username in "${OPS[@]}"; do
     fi
 done
 
-sed -i 's/server-port.*/server-port=25565/g' server.properties
+if [[ -f server.properties ]]; then
+    sed -i 's/server-port.*/server-port=25565/g' server.properties
+fi
 
 # Start the server as PID 1 (exec) so `docker stop` delivers SIGTERM straight to
 # Java, which then saves the world and shuts down cleanly. This is the same
