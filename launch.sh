@@ -1,41 +1,86 @@
 #!/bin/bash
-set -x
 
+# Pack name, versions and download URL. Kept up to date automatically by
+# .github/workflows/update-pack.yml — see pack.env in the repository.
+# shellcheck source=pack.env
+source "${PACK_ENV:-/pack.env}"
 
-NEOFORGE_VERSION=21.1.259
-SERVER_VERSION=8.3
+log() { echo "[pack] $*"; }
 
-cd /data
+cd /data || { log "ERROR: /data is not available"; exit 1; }
 
-if ! [[ "$EULA" = "false" ]]; then
-    echo "eula=true" > eula.txt
-else
-    echo "You must accept the EULA to install."
+# The Minecraft EULA must be accepted by the person running the server.
+# It is never accepted on anyone's behalf: EULA=true has to be set explicitly.
+if [[ "${EULA,,}" != "true" ]]; then
+    log "You must accept the Minecraft EULA to run this server: https://aka.ms/MinecraftEULA"
+    log "Read it, then set the environment variable EULA=true in your container template."
     exit 99
 fi
+echo "eula=true" > eula.txt
 
-if ! [[ -f "Server-Files-$SERVER_VERSION.zip" ]]; then
-    rm -fr config defaultconfigs kubejs mods packmenu Server-Files-* neoforge*
+MARKER=".installed-${SERVER_VERSION}"
 
-    curl -Lo "Server-Files-$SERVER_VERSION.zip" "https://edge.forgecdn.net/files/9190/182/ServerFiles-$SERVER_VERSION.zip" || exit 9
+# Containers installed before automated updates used the downloaded zip as the
+# "installed" marker. Adopt it so existing servers don't reinstall needlessly.
+for legacy in "server-${SERVER_VERSION}.zip" "Server-Files-${SERVER_VERSION}.zip"; do
+    if [[ -f "$legacy" && ! -f "$MARKER" ]]; then
+        log "Found legacy install marker $legacy; adopting it."
+        touch "$MARKER" && rm -f "$legacy"
+    fi
+done
 
-    unzip -u -o "Server-Files-$SERVER_VERSION.zip" -d /data
-    DIR_TEST="ServerFiles-$SERVER_VERSION"
-    if [[ $(find . -type d -maxdepth 1 | wc -l) -gt 1 ]]; then
-        cd "${DIR_TEST}"
-        find . -type d -exec chmod 777 {} +
-        mv -f * /data
-        cd /data
-        rm -fr "$DIR_TEST"
+if [[ ! -f "$MARKER" ]]; then
+    log "Installing ${PACK_NAME} ${SERVER_VERSION} (NeoForge ${NEOFORGE_VERSION})"
+    staging=/data/.install-tmp
+    rm -rf "$staging" && mkdir -p "$staging"
+
+    if ! curl -fsSL --retry 3 --retry-delay 5 -o "$staging/server.zip" "$SERVER_URL"; then
+        log "ERROR: failed to download $SERVER_URL"
+        rm -rf "$staging"
+        exit 9
+    fi
+    if ! unzip -q "$staging/server.zip" -d "$staging/files"; then
+        log "ERROR: downloaded server pack is not a valid zip"
+        rm -rf "$staging"
+        exit 9
     fi
 
-    curl -Lo neoforge-${NEOFORGE_VERSION}-installer.jar https://maven.neoforged.net/releases/net/neoforged/neoforge/$NEOFORGE_VERSION/neoforge-$NEOFORGE_VERSION-installer.jar
-    java -jar neoforge-${NEOFORGE_VERSION}-installer.jar --installServer
+    # Server packs are usually flat, but some wrap everything in one folder.
+    src="$staging/files"
+    shopt -s nullglob dotglob
+    top=("$src"/*)
+    shopt -u nullglob dotglob
+    if [[ ${#top[@]} -eq 1 && -d "${top[0]}" ]]; then
+        src="${top[0]}"
+    fi
+
+    # Replace pack-owned folders; worlds, server.properties, whitelist etc. are kept.
+    rm -rf config defaultconfigs kubejs mods packmenu .installed-* \
+           server-*.zip Server-Files-*.zip neoforge-*-installer.jar*
+    cp -a "$src"/. /data/
+    rm -rf "$staging"
+
+    installer="neoforge-${NEOFORGE_VERSION}-installer.jar"
+    if ! curl -fsSL --retry 3 --retry-delay 5 -o "$installer" \
+        "https://maven.neoforged.net/releases/net/neoforged/neoforge/${NEOFORGE_VERSION}/${installer}"; then
+        log "ERROR: failed to download NeoForge ${NEOFORGE_VERSION}"
+        exit 9
+    fi
+    if ! java -jar "$installer" --installServer; then
+        log "ERROR: NeoForge installer failed"
+        exit 9
+    fi
+    rm -f "$installer" "$installer.log"
+
+    touch "$MARKER"   # only after everything above succeeded
+    log "Install of ${SERVER_VERSION} complete."
 fi
 
 if [[ -n "$JVM_OPTS" ]]; then
-    sed -i '/-Xm[s,x]/d' user_jvm_args.txt
-    for j in ${JVM_OPTS}; do sed -i '$a\'$j'' user_jvm_args.txt; done
+    sed -i '/^-Xm[sx]/d' user_jvm_args.txt
+    for j in ${JVM_OPTS}; do
+        printf '%s\n' "$j" >> user_jvm_args.txt
+    done
 fi
 if [[ -n "$MOTD" ]]; then
     sed -i "s/^motd=.*/motd=$MOTD/" /data/server.properties
@@ -108,6 +153,9 @@ for raw_username in "${OPS[@]}"; do
 done
 
 sed -i 's/server-port.*/server-port=25565/g' server.properties
-chmod 755 run.sh
 
-./run.sh
+# Start the server as PID 1 (exec) so `docker stop` delivers SIGTERM straight to
+# Java, which then saves the world and shuts down cleanly. This is the same
+# command NeoForge's run.sh uses.
+log "Starting ${PACK_NAME} ${SERVER_VERSION}"
+exec java @user_jvm_args.txt "@libraries/net/neoforged/neoforge/${NEOFORGE_VERSION}/unix_args.txt" nogui

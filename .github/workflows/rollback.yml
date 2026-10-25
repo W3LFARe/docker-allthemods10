@@ -1,0 +1,75 @@
+name: Rollback release
+
+# Manual one-click rollback:
+#   1. Re-points :latest on Docker Hub to an already-published :<version> image.
+#   2. Restores pack.env and README.md from tag v<version>.
+#   3. Adds the rolled-back CurseForge file id to SKIP_FILE_IDS so the 6-hour
+#      updater will not re-publish the broken version.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to roll back to (e.g. 2.1.0 — must have tag v<version> and Docker tag :<version>)
+        required: true
+        type: string
+      skip_current:
+        description: Add the current SERVER_FILE_ID to SKIP_FILE_IDS so the updater does not re-apply it
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Re-point :latest and restore pack.env from tag
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          TARGET_VERSION: ${{ inputs.version }}
+          SKIP_CURRENT: ${{ inputs.skip_current }}
+        run: |
+          set -euo pipefail
+          source pack.env
+          bad_version="$SERVER_VERSION"
+          bad_file_id="$SERVER_FILE_ID"
+          image="${DOCKERHUB_USERNAME}/${IMAGE_NAME}"
+          tag="v${TARGET_VERSION#v}"
+          ver="${TARGET_VERSION#v}"
+
+          if ! git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+            echo "::error::Git tag $tag does not exist"
+            exit 1
+          fi
+
+          # Retag :<ver> as :latest directly on the registry (no rebuild needed).
+          docker buildx imagetools create -t "${image}:latest" "${image}:${ver}"
+
+          git show "${tag}:pack.env" > /tmp/old-pack.env
+          python3 .github/scripts/cf_update.py restore /tmp/old-pack.env
+          if [[ "$SKIP_CURRENT" == "true" && -n "$bad_file_id" ]]; then
+            python3 .github/scripts/cf_update.py skip "$bad_file_id"
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898299+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Rollback ${PACK_NAME} from ${bad_version} to ${ver}"
+          git push origin HEAD:main
+
+          echo "### ⏪ Rolled back \`${image}:latest\` to \`${ver}\`" >> "$GITHUB_STEP_SUMMARY"
+          if [[ "$SKIP_CURRENT" == "true" ]]; then
+            echo "Added file \`${bad_file_id}\` (\`${bad_version}\`) to \`SKIP_FILE_IDS\`." >> "$GITHUB_STEP_SUMMARY"
+          fi

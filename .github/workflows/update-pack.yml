@@ -1,0 +1,247 @@
+name: Update pack from CurseForge
+
+# Every 6 hours (or on demand) look for a new server pack on CurseForge.
+# New version -> commit on a staging branch -> build + smoke test -> on success
+# fast-forward the branch, tag vX.Y.Z and publish a GitHub Release with the
+# CurseForge changelog. On failure the version is skipped and an issue is opened.
+#
+# On `main` this publishes :latest. Pushing to the `curseforge-test` branch runs
+# the same pipeline in test mode (image tag :curseforge-test, tag test-vX.Y.Z,
+# pre-release) so it can be verified without touching what Unraid users get.
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Only report what would change
+        type: boolean
+        default: false
+      ignore_skip:
+        description: Retry versions on the skip list (SKIP_FILE_IDS)
+        type: boolean
+        default: false
+      force_build:
+        description: Rebuild, re-test and re-publish the current version
+        type: boolean
+        default: false
+  push:
+    branches: [curseforge-test]
+    paths-ignore: ["**.md"]
+
+concurrency:
+  group: update-pack-${{ github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # push commits, tags, releases
+  issues: write     # open an issue when a version fails
+  actions: write    # keep the schedule from being auto-disabled
+
+env:
+  RELEASE_BRANCH: main
+  GIT_NAME: github-actions[bot]
+  GIT_EMAIL: 41898299+github-actions[bot]@users.noreply.github.com
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.cf.outputs.changed }}
+      version: ${{ steps.cf.outputs.version }}
+      file_id: ${{ steps.cf.outputs.file_id }}
+      staging: ${{ steps.stage.outputs.branch }}
+      ref: ${{ steps.decide.outputs.ref }}
+      build: ${{ steps.decide.outputs.build }}
+      force_fail: ${{ steps.decide.outputs.force_fail }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Keep the schedule alive
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # GitHub disables cron workflows after 60 days without repo activity;
+        # re-enabling resets that timer.
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/update-pack.yml/enable" || true
+
+      - name: Check CurseForge
+        id: cf
+        env:
+          CURSEFORGE_API_KEY: ${{ secrets.CURSEFORGE_API_KEY }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          IGNORE_SKIP: ${{ inputs.ignore_skip }}
+        run: |
+          args=()
+          if [[ "$DRY_RUN" == "true" ]]; then args+=(--dry-run); fi
+          if [[ "$IGNORE_SKIP" == "true" ]]; then args+=(--ignore-skip); fi
+          python3 .github/scripts/cf_update.py check "${args[@]}"
+
+      - name: Commit update to staging branch
+        id: stage
+        if: steps.cf.outputs.changed == 'true' && inputs.dry_run != true
+        env:
+          VERSION: ${{ steps.cf.outputs.version }}
+          NEOFORGE: ${{ steps.cf.outputs.neoforge }}
+        run: |
+          source pack.env
+          branch="bot/${GITHUB_REF_NAME}/update-${VERSION}"
+          git config user.name "$GIT_NAME"
+          git config user.email "$GIT_EMAIL"
+          git switch -c "$branch"
+          git add pack.env README.md CHANGELOG.md
+          git commit -m "Update ${PACK_NAME} to ${VERSION} (NeoForge ${NEOFORGE})"
+          git push --force origin "$branch"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Decide whether to build
+        id: decide
+        env:
+          STAGED_SHA: ${{ steps.stage.outputs.sha }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          FORCE_BUILD: ${{ inputs.force_build }}
+          HEAD_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          build=false
+          if [[ -n "$STAGED_SHA" ]]; then
+            build=true                                   # new version
+          elif [[ "$FORCE_BUILD" == "true" && "$DRY_RUN" != "true" ]]; then
+            build=true                                   # manual rebuild
+          elif [[ "$HEAD_MSG" == *"[force-build]"* ]]; then
+            build=true                                   # commit requested a rebuild
+          fi
+          force_fail=false
+          if [[ "$HEAD_MSG" == *"[smoke-fail]"* ]]; then force_fail=true; fi
+          {
+            echo "build=$build"
+            echo "ref=${STAGED_SHA:-$GITHUB_SHA}"
+            echo "force_fail=$force_fail"
+          } >> "$GITHUB_OUTPUT"
+          echo "build=$build force_fail=$force_fail"
+
+  release:
+    needs: check
+    if: needs.check.outputs.build == 'true'
+    uses: ./.github/workflows/build-test-publish.yml
+    with:
+      ref: ${{ needs.check.outputs.ref }}
+      force_fail: ${{ needs.check.outputs.force_fail == 'true' }}
+    secrets: inherit
+
+  finalize:
+    needs: [check, release]
+    if: needs.check.outputs.staging != '' && needs.release.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.check.outputs.staging }}
+          fetch-depth: 0
+
+      - name: Publish commit, tag and GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.check.outputs.version }}
+          FILE_ID: ${{ needs.check.outputs.file_id }}
+          STAGING: ${{ needs.check.outputs.staging }}
+          TARGET: ${{ github.ref_name }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+        run: |
+          set -euo pipefail
+          source pack.env
+          git config user.name "$GIT_NAME"
+          git config user.email "$GIT_EMAIL"
+
+          # Move the target branch to the tested commit (rebase if it moved meanwhile).
+          git fetch origin "$TARGET"
+          if ! git merge-base --is-ancestor "origin/$TARGET" HEAD; then
+            git rebase "origin/$TARGET"
+          fi
+          git push origin "HEAD:refs/heads/$TARGET"
+
+          image="${DOCKERHUB_USERNAME}/${IMAGE_NAME}"
+          python3 .github/scripts/cf_update.py notes "$VERSION" > section.md
+          if [[ "$TARGET" == "$RELEASE_BRANCH" ]]; then
+            tag="v${VERSION}"
+            if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
+              tag="v${VERSION}-${FILE_ID}"     # same version re-uploaded on CurseForge
+            fi
+            title="${PACK_NAME} ${VERSION}"
+            pre=()
+            pull="docker pull ${image}:${VERSION}   # or :latest"
+            : > notes.md
+          else
+            tag="test-v${VERSION}"
+            title="[TEST] ${PACK_NAME} ${VERSION}"
+            pre=(--prerelease)
+            pull="docker pull ${image}:${TARGET//\//-}"
+            printf '> [!WARNING]\n> Test build from the `%s` branch. `:latest` was not changed.\n\n' "$TARGET" > notes.md
+            gh release delete "$tag" --yes --cleanup-tag 2>/dev/null || true
+          fi
+          {
+            cat section.md
+            printf '\n---\n**Docker image:** `%s`\n\n' "$pull"
+            printf 'Remember: the container only starts when `EULA=true` is set (you accept the [Minecraft EULA](https://aka.ms/MinecraftEULA)).\n'
+          } >> notes.md
+
+          git tag -f "$tag"
+          git push -f origin "refs/tags/$tag"
+          gh release create "$tag" --title "$title" --notes-file notes.md --verify-tag "${pre[@]}"
+          git push origin --delete "$STAGING" || true
+          echo "### ✅ Released \`$tag\`" >> "$GITHUB_STEP_SUMMARY"
+
+  on-failure:
+    needs: [check, release]
+    if: always() && needs.check.outputs.staging != '' && needs.release.result == 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Download server log
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: smoke-log
+
+      - name: Skip this version and open an issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.check.outputs.version }}
+          FILE_ID: ${{ needs.check.outputs.file_id }}
+          STAGING: ${{ needs.check.outputs.staging }}
+          TARGET: ${{ github.ref_name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          source pack.env
+          git config user.name "$GIT_NAME"
+          git config user.email "$GIT_EMAIL"
+
+          python3 .github/scripts/cf_update.py skip "$FILE_ID"
+          git commit -am "Skip ${PACK_NAME} ${VERSION} (file ${FILE_ID}): smoke test failed"
+          for i in 1 2 3; do
+            git push origin "HEAD:refs/heads/$TARGET" && break
+            git pull --rebase origin "$TARGET"
+          done
+
+          {
+            echo "The automatic update of **${PACK_NAME}** to **${VERSION}** (CurseForge file \`${FILE_ID}\`, branch \`${TARGET}\`) failed the smoke test."
+            echo
+            echo "- Nothing was published. Docker tags were not changed."
+            echo "- File \`${FILE_ID}\` was added to \`SKIP_FILE_IDS\` in \`pack.env\`. The next CurseForge release is picked up as usual."
+            echo "- To retry this version: **Actions → Update pack from CurseForge → Run workflow** with *ignore_skip* checked."
+            echo
+            echo "Run: ${RUN_URL}"
+            echo
+            echo "<details><summary>Last 100 lines of the server log</summary>"
+            echo
+            echo '```'
+            tail -n 100 smoke.log 2>/dev/null || echo "(no log captured; see the run for build errors)"
+            echo '```'
+            echo "</details>"
+          } > issue.md
+          gh issue create --title "Update to ${PACK_NAME} ${VERSION} failed (${TARGET})" --body-file issue.md
+          git push origin --delete "$STAGING" || true
