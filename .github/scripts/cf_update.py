@@ -511,6 +511,14 @@ def cmd_dockerhub(_args) -> int:
             print(f"Updated Docker Hub {repo} (HTTP {r.status}): {short}")
     except urllib.error.HTTPError as e:
         detail = e.read().decode("utf-8", "replace")[:300]
+        if e.code == 403 and "insufficient scope" in detail:
+            print(
+                f"::warning title=Docker Hub description not updated::"
+                f"DOCKERHUB_TOKEN only has Read & Write scope. To let CI update the Docker Hub "
+                f"short description and README overview for {repo}, create a Docker Hub Access Token "
+                f"with 'Read, Write, Delete' permissions and save it to the DOCKERHUB_TOKEN secret."
+            )
+            return 0
         raise UpdateError(f"Docker Hub PATCH /v2/repositories/{repo}/ -> HTTP {e.code}: {detail}") from e
     return 0
 
