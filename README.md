@@ -31,12 +31,18 @@ Note: There are no modded Minecraft files shipped in the container; they are all
 
 > **Important:** As the end user, you are responsible for accepting the [Minecraft EULA](https://aka.ms/MinecraftEULA) from Mojang to run their server. By default in the container it is not accepted — the container will exit with code `99` unless you pass `-e EULA=true`.
 
+### Recommended Server RAM (`JVM_OPTS`)
+
+* **Minimum (1–2 players):** 8–10 GB (`-Xms8192m -Xmx10240m`)
+* **Recommended (2–5 players):** 10–12 GB (`-Xms8192m -Xmx12288m`)
+* **Heavy / 5+ players:** 14–16 GB (`-Xms12288m -Xmx16384m`)
+
 ## Options
 
 These environment variables can be set to override their defaults:
 
 * `EULA` `"true"` (**required** — server will not start without this)
-* `JVM_OPTS` `"-Xms2048m -Xmx4096m"`
+* `JVM_OPTS` `"-Xms8192m -Xmx12288m"` (allocate at least 8–10 GB for 1–2 players, 10–12 GB for 2–5 players, or 14–16 GB for 5+ players)
 * `MOTD` `"All the Mods 10 Server Powered by Docker"`
 * `ALLOW_FLIGHT` `"true"` or `"false"`
 * `MAX_PLAYERS` `"5"`

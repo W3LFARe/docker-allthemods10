@@ -51,7 +51,7 @@ spec:
       initContainers:
         - name: volume-ownership
           image: busybox
-          command: ["sh", "-c", "chown -R 99:99 /data"]
+          command: ["sh", "-c", "chown -R 99:100 /data"]
           volumeMounts:
             - name: minecraft-data
               mountPath: /data
@@ -61,28 +61,20 @@ spec:
           env:
             - name: EULA
               value: "true"
-            - name: MODE
-              value: "survival"
+            - name: JVM_OPTS
+              value: "-Xms8192m -Xmx12288m"
             - name: MOTD
               value: "Hello World!"
-            - name: LEVEL
-              value: world
             - name: ENABLE_WHITELIST
-              value: false
+              value: "false"
             - name: WHITELIST_USERS
               value: USERNAME
             - name: OP_USERS
               value: USERNAME
             - name: ALLOW_FLIGHT
-              value: false
+              value: "false"
             - name: ONLINE_MODE
-              value: true
-            - name: INIT_MEMORY
-              value: 8G
-            - name: MAX_MEMORY
-              value: 12G
-            - name: RCON_PASSWORD
-              value: "rcon-password"
+              value: "true"
           ports:
             - name: minecraft-game
               containerPort: 25565  # Expose port 25565

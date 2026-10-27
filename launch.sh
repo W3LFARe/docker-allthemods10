@@ -80,7 +80,7 @@ if [[ -n "$JVM_OPTS" ]]; then
     sed -i '/^-Xm[sx]/d; /^# --- launch\.sh JVM_OPTS ---$/,$d' user_jvm_args.txt
     printf '\n# --- launch.sh JVM_OPTS ---\n' >> user_jvm_args.txt
     for j in ${JVM_OPTS}; do
-        printf '%s\n' "$j" >> user_jvm_args.txt
+        printf '%s\n' "${j/#--Xm/-Xm}" >> user_jvm_args.txt
     done
 fi
 if [[ -n "$MOTD" ]]; then
