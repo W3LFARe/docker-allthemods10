@@ -157,6 +157,31 @@ if [[ -f server.properties ]]; then
     sed -i 's/server-port.*/server-port=25565/g' server.properties
 fi
 
+# 1. Restore persistent custom mods from /data/custom_mods across modpack updates
+mkdir -p /data/custom_mods
+if compgen -G "/data/custom_mods/*.jar" > /dev/null; then
+    echo "[pack] Copying persistent custom mods from /data/custom_mods to /data/mods..."
+    mkdir -p /data/mods
+    cp -vf /data/custom_mods/*.jar /data/mods/
+fi
+
+# 2. Restore persistent custom configs from /data/custom_config across modpack updates
+mkdir -p /data/custom_config
+if [ -n "$(ls -A /data/custom_config 2>/dev/null)" ]; then
+    echo "[pack] Copying persistent custom configs from /data/custom_config to /data/config..."
+    mkdir -p /data/config
+    cp -rvf /data/custom_config/* /data/config/
+fi
+
+# 3. Support custom SERVER_PORT override (Pelican/Pterodactyl & Docker port mapping)
+if [[ -n "${SERVER_PORT:-}" ]] && [[ -f server.properties ]]; then
+    echo "[pack] Configuring server-port=${SERVER_PORT} in server.properties..."
+    sed -i "s/^server-port=.*/server-port=${SERVER_PORT}/" server.properties
+    sed -i "s/^query\.port=.*/query.port=${SERVER_PORT}/" server.properties
+    grep -q "^server-port=" server.properties || echo "server-port=${SERVER_PORT}" >> server.properties
+    grep -q "^query\.port=" server.properties || echo "query.port=${SERVER_PORT}" >> server.properties
+fi
+
 # Start the server as PID 1 (exec) so `docker stop` delivers SIGTERM straight to
 # Java, which then saves the world and shuts down cleanly. This is the same
 # command NeoForge's run.sh uses.

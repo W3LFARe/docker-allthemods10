@@ -50,6 +50,18 @@ These environment variables can be set to override their defaults:
 * `ENABLE_WHITELIST` `"true"` or `"false"`
 * `WHITELIST_USERS` `"TestUserName1, TestUserName2"`
 * `OP_USERS` `"TestUserName1, TestUserName2"`
+* `SERVER_PORT` `"25565"` (optional — overrides `server-port` and `query.port` in `server.properties`)
+
+## Persistent Custom Mods & Configs
+
+When a new modpack release is installed, the `/data/mods` and `/data/config` directories are replaced with the clean upstream modpack files. To persist extra server-side mods (such as Discord Integration) or custom configuration overrides across automatic modpack updates:
+
+* **`/data/custom_mods/`**: Any `.jar` files placed in `/data/custom_mods/` are automatically copied into `/data/mods/` on every server boot.
+* **`/data/custom_config/`**: Any files or folders placed in `/data/custom_config/` (for example, `Discord-Integration.toml`) are automatically copied into `/data/config/` on every server boot.
+
+## Pelican & Pterodactyl Panel Eggs
+
+Looking to run this server inside **Pelican Panel** or **Pterodactyl Panel** with automatic updates? Grab the official auto-updating Egg from [`W3LFARe/pelican-eggs`](https://github.com/W3LFARe/pelican-eggs).
 
 ## Automatic Updates & Rollback
 
