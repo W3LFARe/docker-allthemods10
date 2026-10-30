@@ -1,4 +1,4 @@
-# [All the Mods 10-8.3](https://www.curseforge.com/minecraft/modpacks/all-the-mods-10) on Curseforge
+# [All the Mods 10-8.4](https://www.curseforge.com/minecraft/modpacks/all-the-mods-10) on Curseforge
 <!-- toc -->
 
 - [Description](#description)
@@ -17,7 +17,7 @@
 
 This container is built to run on an [Unraid](https://unraid.net) server, outside of that your mileage will vary.
 
-On the first run the container downloads `All the Mods 10-8.3` and installs it. This can take a while as the NeoForge installer takes some time to complete. Watch the logs and it will eventually finish.
+On the first run the container downloads `All the Mods 10-8.4` and installs it. This can take a while as the NeoForge installer takes some time to complete. Watch the logs and it will eventually finish.
 
 After the first run, it will simply start the server. When a newer image is pulled, the container automatically upgrades the modpack files while preserving your world, `server.properties`, `whitelist.json`, and `ops.json`.
 

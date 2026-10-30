@@ -5,6 +5,38 @@ New entries are added automatically by [`.github/workflows/update-pack.yml`](.gi
 
 ## Unreleased
 
+## 8.4 — 2026-10-30
+
+NeoForge `21.1.265` · [CurseForge file](https://www.curseforge.com/minecraft/modpacks/all-the-mods-10/files/9366926)
+
+[Detailed changelog](https://github.com/AllTheMods/ATM-10/blob/main/CHANGELOG.md)
+
+**Added:**
+
+- Neovitae: Bloodborn (resourcepack)
+
+**Others:**
+
+- fix structure generation on AS and TF (Uncandango)
+- Eliminate recipe conflicts (item4)
+- Add a tag so cheese from the Moon can be used in cooking (item4)
+- Add complete French (fr_fr) quest translation (aubault83)
+- Fix arrow textures in Industrial Foregoing quests (peterphann)
+- Update in-game announcements to reflect recent ATM10 changes (item4)
+- Updated PT_BR Localizations + Neovitae quest rework (PrincessStellar)
+- Fix missing silver processing recipes (item4)
+- Update Turkish quest translations (KorayWalker)
+- fix: clear obsolete dirt text from Teleposer quest translations (AmmarYasser455)
+
+Neoforge Version is ***21.1.265***
+
+**Known Issue**
+
+- If Draconic Evolution items are invisible, enable the builtin resourcepack "Draconic 2D", or disable "hud_batching" on ImmediatlyFast config files
+- If you crash when interacting with Ars Lectern, break it and place again to fix.
+
+**ALWAYS REMEMBER TO BACKUP BEFORE UPDATING**
+
 ## 8.3 — 2026-10-25
 
 NeoForge `21.1.259` · [CurseForge file](https://www.curseforge.com/minecraft/modpacks/all-the-mods-10/files/9190157)
