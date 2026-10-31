@@ -5,6 +5,11 @@ New entries are added automatically by [`.github/workflows/update-pack.yml`](.gi
 
 ## Unreleased
 
+- Add persistent `/data/custom_mods` (`*.jar` → `mods/`) and `/data/custom_config` (→ `config/`), restored on every boot. Jars removed or renamed in `custom_mods` are cleaned out of `mods/` via a manifest.
+- Add optional `SERVER_PORT` (sets `server-port` and `query.port`; defaults to `25565`).
+- `server.properties` settings are now created when missing and written without `sed`, so a MOTD containing `/`, `&` or `\` no longer breaks startup and settings apply on the very first boot.
+- Whitelist/ops: an empty UUID lookup result (PlayerDB down, `jq` missing) is now treated as a failure instead of writing a bad entry.
+
 ## 8.4 — 2026-10-30
 
 NeoForge `21.1.265` · [CurseForge file](https://www.curseforge.com/minecraft/modpacks/all-the-mods-10/files/9366926)

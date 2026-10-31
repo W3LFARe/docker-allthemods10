@@ -1,0 +1,3 @@
+# Keep line endings as LF everywhere (shell scripts break with CRLF).
+* text=auto eol=lf
+*.png binary

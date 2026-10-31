@@ -83,20 +83,34 @@ if [[ -n "$JVM_OPTS" ]]; then
         printf '%s\n' "${j/#--Xm/-Xm}" >> user_jvm_args.txt
     done
 fi
+# Set KEY=VALUE in server.properties. Creates the file / the key when missing
+# (first boot of a pack without server.properties) and passes the value through
+# the environment so characters like / & \ in a MOTD can't break the edit.
+set_prop() {
+    local key="$1" value="$2" file="server.properties"
+    [[ -f "$file" ]] || : > "$file"
+    KEY="$key" VALUE="$value" awk '
+        BEGIN { k = ENVIRON["KEY"]; v = ENVIRON["VALUE"]; done = 0 }
+        index($0, k "=") == 1 { if (!done) print k "=" v; done = 1; next }
+        { print }
+        END { if (!done) print k "=" v }
+    ' "$file" > "$file.tmp" && mv "$file.tmp" "$file"
+}
+
 if [[ -n "$MOTD" ]]; then
-    sed -i "s/^motd=.*/motd=$MOTD/" /data/server.properties
+    set_prop motd "$MOTD"
 fi
 if [[ -n "$ENABLE_WHITELIST" ]]; then
-    sed -i "s/white-list=.*/white-list=$ENABLE_WHITELIST/" /data/server.properties
+    set_prop white-list "$ENABLE_WHITELIST"
 fi
 if [[ -n "$ALLOW_FLIGHT" ]]; then
-    sed -i "s/allow-flight=.*/allow-flight=$ALLOW_FLIGHT/" /data/server.properties
+    set_prop allow-flight "$ALLOW_FLIGHT"
 fi
 if [[ -n "$MAX_PLAYERS" ]]; then
-    sed -i "s/max-players=.*/max-players=$MAX_PLAYERS/" /data/server.properties
+    set_prop max-players "$MAX_PLAYERS"
 fi
 if [[ -n "$ONLINE_MODE" ]]; then
-    sed -i "s/online-mode=.*/online-mode=$ONLINE_MODE/" /data/server.properties
+    set_prop online-mode "$ONLINE_MODE"
 fi
 
 # Initialize whitelist.json if not present
@@ -114,7 +128,7 @@ for raw_username in "${USERS[@]}"; do
     fi
 
     UUID=$(curl -s "https://playerdb.co/api/player/minecraft/$username" | jq -r '.data.player.id')
-    if [[ "$UUID" != "null" ]]; then
+    if [[ -n "$UUID" && "$UUID" != "null" ]]; then
         if jq -e ".[] | select(.uuid == \"$UUID\" and .name == \"$username\")" whitelist.json > /dev/null; then
             echo "Whitelist: $username ($UUID) is already whitelisted. Skipping..."
         else
@@ -141,7 +155,7 @@ for raw_username in "${OPS[@]}"; do
     fi
 
     UUID=$(curl -s "https://playerdb.co/api/player/minecraft/$username" | jq -r '.data.player.id')
-    if [[ "$UUID" != "null" ]]; then
+    if [[ -n "$UUID" && "$UUID" != "null" ]]; then
         if jq -e ".[] | select(.uuid == \"$UUID\" and .name == \"$username\")" ops.json > /dev/null; then
             echo "Ops: $username ($UUID) is already an operator. Skipping..."
         else
@@ -153,33 +167,43 @@ for raw_username in "${OPS[@]}"; do
     fi
 done
 
-if [[ -f server.properties ]]; then
-    sed -i 's/server-port.*/server-port=25565/g' server.properties
+# Port: SERVER_PORT is set by Pelican/Pterodactyl; Docker/Unraid keep 25565.
+set_prop server-port "${SERVER_PORT:-25565}"
+if [[ -n "${SERVER_PORT:-}" ]]; then
+    set_prop query.port "${SERVER_PORT}"
 fi
 
-# 1. Restore persistent custom mods from /data/custom_mods across modpack updates
-mkdir -p /data/custom_mods
-if compgen -G "/data/custom_mods/*.jar" > /dev/null; then
-    echo "[pack] Copying persistent custom mods from /data/custom_mods to /data/mods..."
-    mkdir -p /data/mods
-    cp -vf /data/custom_mods/*.jar /data/mods/
+# Persistent custom mods: copy /data/custom_mods/*.jar into /data/mods on every
+# boot. The names copied last time are remembered in a manifest so a removed or
+# renamed jar in custom_mods doesn't linger in mods/ (duplicate-mod crashes).
+mkdir -p /data/custom_mods /data/mods
+CUSTOM_MODS_MANIFEST="/data/.custom_mods.manifest"
+if [[ -f "$CUSTOM_MODS_MANIFEST" ]]; then
+    while IFS= read -r old_jar; do
+        [[ -n "$old_jar" ]] && rm -f "/data/mods/$old_jar"
+    done < "$CUSTOM_MODS_MANIFEST"
+    rm -f "$CUSTOM_MODS_MANIFEST"
+fi
+shopt -s nullglob
+custom_jars=(/data/custom_mods/*.jar)
+shopt -u nullglob
+if (( ${#custom_jars[@]} > 0 )); then
+    log "Copying ${#custom_jars[@]} persistent custom mod(s) from /data/custom_mods to /data/mods..."
+    for jar in "${custom_jars[@]}"; do
+        name="${jar##*/}"
+        # Only track jars that don't replace a pack-owned file of the same name,
+        # otherwise removing the custom jar later would delete the pack's mod.
+        [[ -e "/data/mods/$name" ]] || echo "$name" >> "$CUSTOM_MODS_MANIFEST"
+        cp -vf "$jar" "/data/mods/$name"
+    done
 fi
 
-# 2. Restore persistent custom configs from /data/custom_config across modpack updates
+# Persistent custom configs: copy /data/custom_config/* into /data/config on every boot.
 mkdir -p /data/custom_config
-if [ -n "$(ls -A /data/custom_config 2>/dev/null)" ]; then
-    echo "[pack] Copying persistent custom configs from /data/custom_config to /data/config..."
+if [[ -n "$(ls -A /data/custom_config 2>/dev/null)" ]]; then
+    log "Copying persistent custom configs from /data/custom_config to /data/config..."
     mkdir -p /data/config
-    cp -rvf /data/custom_config/* /data/config/
-fi
-
-# 3. Support custom SERVER_PORT override (Pelican/Pterodactyl & Docker port mapping)
-if [[ -n "${SERVER_PORT:-}" ]] && [[ -f server.properties ]]; then
-    echo "[pack] Configuring server-port=${SERVER_PORT} in server.properties..."
-    sed -i "s/^server-port=.*/server-port=${SERVER_PORT}/" server.properties
-    sed -i "s/^query\.port=.*/query.port=${SERVER_PORT}/" server.properties
-    grep -q "^server-port=" server.properties || echo "server-port=${SERVER_PORT}" >> server.properties
-    grep -q "^query\.port=" server.properties || echo "query.port=${SERVER_PORT}" >> server.properties
+    cp -rvf /data/custom_config/. /data/config/
 fi
 
 # Start the server as PID 1 (exec) so `docker stop` delivers SIGTERM straight to
