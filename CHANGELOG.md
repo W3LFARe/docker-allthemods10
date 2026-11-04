@@ -5,6 +5,52 @@ New entries are added automatically by [`.github/workflows/update-pack.yml`](.gi
 
 ## Unreleased
 
+## 8.5 — 2026-11-04
+
+NeoForge `21.1.265` · [CurseForge file](https://www.curseforge.com/minecraft/modpacks/all-the-mods-10/files/9431424)
+
+[Detailed changelog](https://github.com/AllTheMods/ATM-10/blob/main/CHANGELOG.md)
+
+**Removed:**
+
+- Ars Polymorphia (crashing)
+
+**Others:**
+
+- Prevent Soul Flower harvest multiplication (Uncandango)
+- Rebalance Oritech Enchanting (DivineFinal)
+- Remove MA's Yellorium Seeds (item4)
+- Restore Oritech enchanting recipes (Uncandango)
+- Fix Ice and Fire spawning and quest details (Uncandango)
+- Update French (fr_fr) translation of the Neo Vitae quest chapter (aubault83)
+- AA Multis (Drackion)
+- fix: update Turkish Neo Vitae quest translations (KorayWalker)
+- Fix electric blast furnace coil quest count (Uncandango)
+- Fix Infusion Altar quest spelling (Uncandango)
+- Fix Galgadorian drill quest spelling (Uncandango)
+- Fix quest text typos (Uncandango)
+- Disable randomized Mekanism chemical consumption (Uncandango)
+- Add sulfur block oxidation recipes (Uncandango)
+- Add bat wing outputs to HNN bat model (Uncandango)
+- Exclude Create tracks from Ultimine (Uncandango)
+- Fix blank enchanted book reward (Uncandango)
+- Remove yellorium seed quest (Uncandango)
+- Fix Eternal Starlight quest descriptions (Uncandango)
+- Disable held torch effects to prevent visual artifacts (Uncandango)
+- Unify Refined Storage expansion recipes (Uncandango)
+- fix rock crystal seeds (Uncandango)
+
+Neoforge Version is ***21.1.265***
+
+**Known Issue**
+
+- If Draconic Evolution items are invisible, enable the builtin resourcepack "Draconic 2D", or disable "hud_batching" on ImmediatlyFast config files
+- If you crash when interacting with Ars Lectern, break it and place again to fix.
+
+**ALWAYS REMEMBER TO BACKUP BEFORE UPDATING**
+
+### Container changes
+
 - Add persistent `/data/custom_mods` (`*.jar` → `mods/`) and `/data/custom_config` (→ `config/`), restored on every boot. Jars removed or renamed in `custom_mods` are cleaned out of `mods/` via a manifest.
 - Add optional `SERVER_PORT` (sets `server-port` and `query.port`; defaults to `25565`).
 - `server.properties` settings are now created when missing and written without `sed`, so a MOTD containing `/`, `&` or `\` no longer breaks startup and settings apply on the very first boot.
