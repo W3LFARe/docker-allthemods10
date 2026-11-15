@@ -5,6 +5,32 @@ New entries are added automatically by [`.github/workflows/update-pack.yml`](.gi
 
 ## Unreleased
 
+## 8.6 — 2026-11-15
+
+NeoForge `21.1.266` · [CurseForge file](https://www.curseforge.com/minecraft/modpacks/all-the-mods-10/files/9620701)
+
+[Detailed changelog](https://github.com/AllTheMods/ATM-10/blob/main/CHANGELOG.md)
+
+**Others:**
+
+- block misleading Reliquary mob charms (Uncandango)
+- Name remaining quest reward tables (Uncandango)
+- Remove Ad Astra steel block recipe (Uncandango)
+- Remove unobtainable Copper Alloy Seeds quest (Uncandango)
+- update unskippable structures (Uncandango)
+- alternative to recycling book adv (Uncandango)
+- Update French quest translation for 8.5 English fixes (aubault83)
+- NeoVitae Quest Fix (PrincessStellar)
+
+Neoforge Version is ***21.1.266***
+
+**Known Issue**
+
+- If Draconic Evolution items are invisible, enable the builtin resourcepack "Draconic 2D", or disable "hud_batching" on ImmediatlyFast config files
+- If you crash when interacting with Ars Lectern, break it and place again to fix.
+
+**ALWAYS REMEMBER TO BACKUP BEFORE UPDATING**
+
 ## 8.5 — 2026-11-04
 
 NeoForge `21.1.265` · [CurseForge file](https://www.curseforge.com/minecraft/modpacks/all-the-mods-10/files/9431424)
